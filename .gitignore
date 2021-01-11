@@ -1,0 +1,6 @@
+# Config
+dwh.cfg
+
+# VSCode
+*.code-workspace
+.vscode
