@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS staging_events (
     level TEXT,
     location TEXT,
     method TEXT,
-    page TEXT,
+    page TEXT SORTKEY,
     registration DOUBLE PRECISION,
     sessionId BIGINT,
     song TEXT,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS staging_songs (
     duration DOUBLE PRECISION NOT NULL,
     year INT NULL,
     num_songs INT NOT NULL,
-    artist_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL SORTKEY DISTKEY,
     artist_latitude DOUBLE PRECISION,
     artist_longitude DOUBLE PRECISION,
     artist_location TEXT,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS staging_songs (
 songplay_table_create = ("""
 CREATE TABLE IF NOT EXISTS songplays (
     songplay_id BIGINT IDENTITY(0, 1) PRIMARY KEY,
-    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL REFERENCES time (start_time),
+    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL REFERENCES time (start_time) SORTKEY DISTKEY,
     user_id BIGINT NOT NULL REFERENCES users (user_id),
     level TEXT NOT NULL,
     song_id TEXT REFERENCES songs (song_id),
@@ -65,17 +65,17 @@ user_table_create = ("""
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
+    last_name TEXT NOT NULL SORTKEY,
     gender CHAR(1) NOT NULL,
     level TEXT NOT NULL
-);
+) DISTSTYLE all;
 """)
 
 song_table_create = ("""
 CREATE TABLE IF NOT EXISTS songs (
     song_id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    artist_id TEXT NOT NULL REFERENCES artists (artist_id),
+    artist_id TEXT NOT NULL REFERENCES artists (artist_id) SORTKEY DISTKEY,
     year INT NOT NULL,
     duration DOUBLE PRECISION NOT NULL
 );
@@ -83,8 +83,8 @@ CREATE TABLE IF NOT EXISTS songs (
 
 artist_table_create = ("""
 CREATE TABLE IF NOT EXISTS artists (
-    artist_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
+    artist_id TEXT PRIMARY KEY DISTKEY,
+    name TEXT NOT NULL SORTKEY,
     location TEXT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS artists (
 
 time_table_create = ("""
 CREATE TABLE IF NOT EXISTS time (
-    start_time TIMESTAMP WITHOUT TIME ZONE PRIMARY KEY,
+    start_time TIMESTAMP WITHOUT TIME ZONE PRIMARY KEY SORTKEY DISTKEY,
     hour INT NOT NULL,
     day INT NOT NULL,
     week INT NOT NULL,
@@ -220,7 +220,6 @@ INSERT into time (start_time, hour, day, week, month, year, weekday) (
         EXTRACT(DOW FROM start_time)
     FROM staging_events
     WHERE page = 'NextSong'
-    ORDER BY start_time
 );
 """)
 

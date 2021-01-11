@@ -56,17 +56,25 @@ the analytics team may want to answer.
 There are also two staging tables which contain log data imported from S3. These tables will be used
 to populate the star schema.
 
+I have added distkeys and sortkeys to the tables for educational purposes. Since
+the data we're working with is relatively small, it may have been better to keep
+the distribution style as 'auto' to let Redshift decide.
+
 ### Fact Table: songplays
 
 There is one fact table, which is the songplays table. This table contains all user events from the
 logs where a user played a song. All other events were filtered out.
+
+The songplays table will be one of the bigger tables, so we will add a sortkey and
+distkey to partition and order by `start_time`. I imagine that time based queries
+would be the most useful type of queries.
 
 #### Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS songplays (
     songplay_id BIGINT IDENTITY(0, 1) PRIMARY KEY,
-    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL REFERENCES time (start_time),
+    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL REFERENCES time (start_time) SORTKEY DISTKEY,
     user_id BIGINT NOT NULL REFERENCES users (user_id),
     level TEXT NOT NULL,
     song_id TEXT REFERENCES songs (song_id),
@@ -90,11 +98,13 @@ The songs dimension can be used to ask questions, such as:
 CREATE TABLE IF NOT EXISTS songs (
     song_id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    artist_id TEXT NOT NULL REFERENCES artists (artist_id),
+    artist_id TEXT NOT NULL REFERENCES artists (artist_id) SORTKEY DISTKEY,
     year INT NOT NULL,
     duration DOUBLE PRECISION NOT NULL
 );
 ```
+A sortkey and distkey is used to partition and sort the songs table by `artist_id` to
+make joins with the artists table faster. I imagine this is a common use case.
 
 #### Schema Notes
 
@@ -112,12 +122,18 @@ In addition the location column has inconsistent formatting.
 Also the latitude/longitude data would likely require some GIS functionality
 to be used meaningfully.
 
+A distkey is used to partition the artists table by `artist_id` to make joins
+with the songs table faster. I imagine this is a common use case.
+
+We also sort by name since it provides some order, but also should keep the
+`artist_id` contiguous unless two artists share the same name which is possible.
+
 #### Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS artists (
-    artist_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
+    artist_id TEXT PRIMARY KEY DISTKEY,
+    name TEXT NOT NULL SORTKEY,
     location TEXT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION
@@ -140,16 +156,24 @@ CREATE TABLE IF NOT EXISTS artists (
 The users dimension can be used to ask useful questions about
 basic demographics (gender) and also account type (free/paid).
 
+For now we will use the 'all' distribution style since the users table is
+relatively small compared to the other tables. As the user base increases
+we will need to change the distribution style.
+
+We specify a sort key of `last_name` which is an arbitrary sort order for
+now. I think it is important to specify a sortkey for all tables since some
+order is better than no order in most cases.
+
 #### Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
+    last_name TEXT NOT NULL SORTKEY,
     gender CHAR(1) NOT NULL,
     level TEXT NOT NULL
-);
+) DISTSTYLE all;
 ```
 
 ### Dimension Table: time
@@ -161,11 +185,14 @@ such as:
 - What time of day do most paid users listen to songs?
 - How does the popularity of a song change from month to month?
 
+A sortkey and distkey are added to the  `start_time` column to partition the data by time to make joins
+with the songplays table faster.
+
 #### Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS time (
-    start_time TIMESTAMP WITHOUT TIME ZONE PRIMARY KEY,
+    start_time TIMESTAMP WITHOUT TIME ZONE PRIMARY KEY SORTKEY DISTKEY,
     hour INT NOT NULL,
     day INT NOT NULL,
     week INT NOT NULL,
@@ -177,7 +204,13 @@ CREATE TABLE IF NOT EXISTS time (
 
 ### Staging Table: staging_events
 
-This table contains log data loaded from S3.
+- This table contains log data loaded from S3.
+- A sortkey has been added to `page` since we will need to filter by that column to
+  populate the users, time, and songplays table
+- For now, we will use 'auto' distribution, though I think it would be good to
+  partition by the `ts` column. The reason I didn't was because the `ts` column
+  doesn't match the format of the other keys, which means the data wouldn't be
+  collocated correctly.
 
 #### Schema
 
@@ -193,7 +226,7 @@ CREATE TABLE IF NOT EXISTS staging_events (
     level TEXT,
     location TEXT,
     method TEXT,
-    page TEXT,
+    page TEXT SORTKEY,
     registration DOUBLE PRECISION,
     sessionId BIGINT,
     song TEXT,
@@ -206,7 +239,10 @@ CREATE TABLE IF NOT EXISTS staging_events (
 
 ### Staging Table: staging_songs
 
-This table contains song data loaded from S3.
+- This table contains song data loaded from S3.
+- A sortkey and distkey are added to `artist_id` to improve the performance of
+  staging queries. This is because the songs and artists table are partitioned
+  by `artist_id`.
 
 #### Schema
 
@@ -217,7 +253,7 @@ CREATE TABLE IF NOT EXISTS staging_songs (
     duration DOUBLE PRECISION NOT NULL,
     year INT NULL,
     num_songs INT NOT NULL,
-    artist_id TEXT NOT NULL,
+    artist_id TEXT NOT NULL SORTKEY DISTKEY,
     artist_latitude DOUBLE PRECISION,
     artist_longitude DOUBLE PRECISION,
     artist_location TEXT,
