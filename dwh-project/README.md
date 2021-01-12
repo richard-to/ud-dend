@@ -76,12 +76,12 @@ CREATE TABLE IF NOT EXISTS songplays (
     songplay_id BIGINT IDENTITY(0, 1) PRIMARY KEY,
     start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL REFERENCES time (start_time) SORTKEY DISTKEY,
     user_id BIGINT NOT NULL REFERENCES users (user_id),
-    level TEXT NOT NULL,
-    song_id TEXT REFERENCES songs (song_id),
-    artist_id TEXT REFERENCES artists (artist_id),
+    level VARCHAR NOT NULL,
+    song_id VARCHAR REFERENCES songs (song_id),
+    artist_id VARCHAR REFERENCES artists (artist_id),
     session_id BIGINT NOT NULL,
-    location TEXT NOT NULL,
-    user_agent TEXT NOT NULL
+    location VARCHAR NOT NULL,
+    user_agent VARCHAR NOT NULL
 );
 ```
 
@@ -96,9 +96,9 @@ The songs dimension can be used to ask questions, such as:
 
 ```sql
 CREATE TABLE IF NOT EXISTS songs (
-    song_id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    artist_id TEXT NOT NULL REFERENCES artists (artist_id) SORTKEY DISTKEY,
+    song_id VARCHAR PRIMARY KEY,
+    title VARCHAR NOT NULL,
+    artist_id VARCHAR NOT NULL REFERENCES artists (artist_id) SORTKEY DISTKEY,
     year INT NOT NULL,
     duration DOUBLE PRECISION NOT NULL
 );
@@ -132,9 +132,9 @@ We also sort by name since it provides some order, but also should keep the
 
 ```sql
 CREATE TABLE IF NOT EXISTS artists (
-    artist_id TEXT PRIMARY KEY DISTKEY,
-    name TEXT NOT NULL SORTKEY,
-    location TEXT,
+    artist_id VARCHAR PRIMARY KEY DISTKEY,
+    name VARCHAR NOT NULL SORTKEY,
+    location VARCHAR,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION
 );
@@ -169,10 +169,10 @@ order is better than no order in most cases.
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL SORTKEY,
+    first_name VARCHAR NOT NULL,
+    last_name VARCHAR NOT NULL SORTKEY,
     gender CHAR(1) NOT NULL,
-    level TEXT NOT NULL
+    level VARCHAR NOT NULL
 ) DISTSTYLE all;
 ```
 
@@ -216,23 +216,23 @@ CREATE TABLE IF NOT EXISTS time (
 
 ```sql
 CREATE TABLE IF NOT EXISTS staging_events (
-    artist TEXT,
-    auth TEXT,
-    firstName TEXT,
-    gender TEXT,
+    artist VARCHAR,
+    auth VARCHAR,
+    firstName VARCHAR,
+    gender VARCHAR,
     itemInSession INT,
-    lastName TEXT,
+    lastName VARCHAR,
     length DOUBLE PRECISION,
-    level TEXT,
-    location TEXT,
-    method TEXT,
-    page TEXT SORTKEY,
+    level VARCHAR,
+    location VARCHAR,
+    method VARCHAR,
+    page VARCHAR SORTKEY,
     registration DOUBLE PRECISION,
     sessionId BIGINT,
-    song TEXT,
+    song VARCHAR,
     status INT,
     ts BIGINT,
-    userAgent TEXT,
+    userAgent VARCHAR,
     userId BIGINT
 );
 ```
@@ -248,15 +248,15 @@ CREATE TABLE IF NOT EXISTS staging_events (
 
 ```sql
 CREATE TABLE IF NOT EXISTS staging_songs (
-    song_id TEXT NOT NULL,
-    title TEXT NOT NULL,
+    song_id VARCHAR NOT NULL,
+    title VARCHAR NOT NULL,
     duration DOUBLE PRECISION NOT NULL,
     year INT NULL,
     num_songs INT NOT NULL,
-    artist_id TEXT NOT NULL SORTKEY DISTKEY,
+    artist_id VARCHAR NOT NULL SORTKEY DISTKEY,
     artist_latitude DOUBLE PRECISION,
     artist_longitude DOUBLE PRECISION,
-    artist_location TEXT,
-    artist_name TEXT NOT NULL
+    artist_location VARCHAR,
+    artist_name VARCHAR NOT NULL
 );
 ```
