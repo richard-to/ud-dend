@@ -1,6 +1,13 @@
+# Data
+data
+
 # Config
 dwh.cfg
+dl.cfg
 
 # VSCode
 *.code-workspace
 .vscode
+
+# System generated files
+.DS_Store
