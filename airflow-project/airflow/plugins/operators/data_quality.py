@@ -9,21 +9,22 @@ class DataQualityOperator(BaseOperator):
     """Operator to check data quality
 
     Attributes:
-        data_checks: List of DataCheck objects
         redshift_conn_id: Name of Airflow connection for Redshift
+
+    Params:
+        data_checks: List of DataCheck objects
     """
 
     ui_color = "#89DA59"
 
     @apply_defaults
     def __init__(self,
-                 data_checks=[],
                  redshift_conn_id="",
                  *args, **kwargs):
 
         super(DataQualityOperator, self).__init__(*args, **kwargs)
         self.redshift_conn_id = redshift_conn_id
-        self.data_checks = data_checks
+        self.data_checks = kwargs["params"]["data_checks"]
 
     def execute(self, context):
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)

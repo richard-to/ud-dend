@@ -126,42 +126,50 @@ run_user_quality_checks = DataQualityOperator(
     task_id="qa_users_table",
     dag=dag,
     redshift_conn_id="redshift",
-    data_checks=[
-        DataCheckFactory.create_no_data_check("users", "userid"),
-        DataCheckFactory.create_duplicates_check("users", "userid"),
-        DataCheckFactory.create_valid_values_check("users", "gender", ["M", "F"]),
-        DataCheckFactory.create_valid_values_check("users", "level", ["free", "paid"]),
-    ],
+    params={
+        "data_checks": [
+            DataCheckFactory.create_no_data_check("users", "userid"),
+            DataCheckFactory.create_duplicates_check("users", "userid"),
+            DataCheckFactory.create_valid_values_check("users", "gender", ["M", "F"]),
+            DataCheckFactory.create_valid_values_check("users", "level", ["free", "paid"]),
+        ],
+    },
 )
 
 run_song_quality_checks = DataQualityOperator(
     task_id="qa_songs_table",
     dag=dag,
     redshift_conn_id="redshift",
-    data_checks=[
-        DataCheckFactory.create_no_data_check("songs", "songid"),
-        DataCheckFactory.create_duplicates_check("songs", "songid"),
-    ],
+    params={
+        "data_checks": [
+            DataCheckFactory.create_no_data_check("songs", "songid"),
+            DataCheckFactory.create_duplicates_check("songs", "songid"),
+        ],
+    },
 )
 
 run_artist_quality_checks = DataQualityOperator(
     task_id="qa_artists_table",
     dag=dag,
     redshift_conn_id="redshift",
-    data_checks=[
-        DataCheckFactory.create_no_data_check("artists", "artistid"),
-        DataCheckFactory.create_duplicates_check("artists", "artistid"),
-    ],
+    params={
+        "data_checks": [
+            DataCheckFactory.create_no_data_check("artists", "artistid"),
+            DataCheckFactory.create_duplicates_check("artists", "artistid"),
+        ],
+    },
 )
 
 run_time_quality_checks = DataQualityOperator(
     task_id="qa_time_table",
     dag=dag,
     redshift_conn_id="redshift",
-    data_checks=[
-        DataCheckFactory.create_no_data_check("time", "start_time"),
-        DataCheckFactory.create_duplicates_check("time", "start_time"),
-    ],
+    params={
+        "data_checks": [
+            DataCheckFactory.create_no_data_check("time", "start_time"),
+            DataCheckFactory.create_duplicates_check("time", "start_time"),
+        ],
+    },
 )
 
 end_operator = DummyOperator(task_id="stop_execution", dag=dag)
@@ -170,23 +178,17 @@ end_operator = DummyOperator(task_id="stop_execution", dag=dag)
 # Build DAG
 # ---------
 
-start_operator >> stage_events_to_redshift
-start_operator >> stage_songs_to_redshift
+start_operator >> [stage_events_to_redshift, stage_songs_to_redshift]
 
-stage_events_to_redshift >> load_songplays_table
-stage_songs_to_redshift >> load_songplays_table
+[stage_events_to_redshift, stage_songs_to_redshift] >> load_songplays_table
 
-load_songplays_table >> load_user_dimension_table
-load_songplays_table >> load_song_dimension_table
-load_songplays_table >> load_artist_dimension_table
-load_songplays_table >> load_time_dimension_table
+load_songplays_table >> [load_user_dimension_table, load_song_dimension_table,
+                         load_artist_dimension_table, load_time_dimension_table]
 
 load_user_dimension_table >> run_user_quality_checks
 load_song_dimension_table >> run_song_quality_checks
 load_artist_dimension_table >> run_artist_quality_checks
 load_time_dimension_table >> run_time_quality_checks
 
-run_user_quality_checks >> end_operator
-run_song_quality_checks >> end_operator
-run_artist_quality_checks >> end_operator
-run_time_quality_checks >> end_operator
+[run_user_quality_checks, run_song_quality_checks,
+ run_artist_quality_checks, run_time_quality_checks] >> end_operator
